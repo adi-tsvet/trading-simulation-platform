@@ -33,7 +33,7 @@ model Holding {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   symbol    String
-  assetType String   // "Stock" or "ETF"
+  assetType String
   quantity  Int
   avgPrice  Float
   updatedAt DateTime @updatedAt

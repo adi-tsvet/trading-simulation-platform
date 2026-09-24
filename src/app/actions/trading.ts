@@ -9,7 +9,7 @@ export async function executeTrade(
   assetType: string,
   type: "BUY" | "SELL",
   quantity: number,
-  currentPrice: Float
+  currentPrice: GLfloat
 ) {
   const totalCost = quantity * currentPrice;
 
