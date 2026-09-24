@@ -8,39 +8,50 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setError("")
-  setLoading(true)
+    e.preventDefault()
+    setError("")
+    setLoading(true)
 
-  try {
-    const endpoint = isLogin ? "/api/login" : "/api/register"
-    const payload = isLogin ? { email } : { name, email }
+    try {
+      const endpoint = isLogin ? "/api/login" : "/api/register"
+      
+      // Construct dynamic payload to match API endpoints
+      const payload = isLogin
+        ? { username, password }
+        : { name, email, username, password }
 
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
 
-    const data = await res.json()
+      const data = await res.json()
 
-    if (!res.ok) {
-      throw new Error(data.error || "Authentication failed")
+      if (!res.ok) {
+        throw new Error(data.error || "Authentication failed")
+      }
+
+      // 1. Save user object to localStorage
+      localStorage.setItem("user", JSON.stringify(data.user))
+
+      // 2. Dispatch event so Navbar updates immediately
+      window.dispatchEvent(new Event("storage"))
+
+      // 3. Redirect to dashboard
+      router.push("/dashboard")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred")
+    } finally {
+      setLoading(false)
     }
-
-    // Save active user info locally & redirect to dashboard
-    localStorage.setItem("user", JSON.stringify(data.user))
-    router.push("/dashboard")
-  } catch (err: unknown) {
-    setError(err instanceof Error ? err.message : "An error occurred")
-  } finally {
-    setLoading(false)
   }
-}
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-[#0B0F17] text-white flex items-center justify-center p-4">
@@ -67,30 +78,59 @@ export default function AuthPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
-            <div>
-              <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="John Doe"
-                className="w-full px-4 py-3 rounded-xl bg-[#0B0F17] border border-gray-800 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
-                required={!isLogin}
-              />
-            </div>
+            <>
+              <div>
+                <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full px-4 py-3 rounded-xl bg-[#0B0F17] border border-gray-800 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="trader@example.com"
+                  className="w-full px-4 py-3 rounded-xl bg-[#0B0F17] border border-gray-800 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                  required={!isLogin}
+                />
+              </div>
+            </>
           )}
 
           <div>
             <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">
-              Email Address
+              Username
             </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="trader@example.com"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="johndoe123"
+              className="w-full px-4 py-3 rounded-xl bg-[#0B0F17] border border-gray-800 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-wider mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               className="w-full px-4 py-3 rounded-xl bg-[#0B0F17] border border-gray-800 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
               required
             />

@@ -2,9 +2,11 @@
 
 import { useState } from "react"
 import { executeTrade } from "@/app/actions/trading"
+import { use } from "react"
 
-export default function TradePage({ params }: { params: { symbol: string } }) {
-  const symbol = params.symbol.toUpperCase()
+export default function TradePage({ params }: { params: Promise<{ symbol: string }> }) {
+  const resolvedParams = use(params)
+  const symbol = resolvedParams.symbol.toUpperCase()
   const [quantity, setQuantity] = useState(1)
   const [orderType, setOrderType] = useState<"BUY" | "SELL">("BUY")
   const [loading, setLoading] = useState(false)

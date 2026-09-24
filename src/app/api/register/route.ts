@@ -1,39 +1,51 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import bcrypt from "bcryptjs"
 
 export async function POST(req: Request) {
   try {
-    const { name, email } = await req.json()
+    const { name, email, username, password, role } = await req.json()
 
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 })
-    }
-
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    })
-
-    if (existingUser) {
+    if (!email || !username || !password) {
       return NextResponse.json(
-        { error: "User with this email already exists" },
+        { error: "Email, username, and password are required" },
         { status: 400 }
       )
     }
 
-    // Create new user with starting virtual cash
-    const user = await prisma.user.create({
-      data: {
-        name: name || email.split("@")[0],
-        email,
-        virtualCash: 100000.0, // Default virtual balance
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { username }],
       },
     })
 
-    return NextResponse.json({ user }, { status: 201 })
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "User with this email or username already exists" },
+        { status: 400 }
+      )
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        username,
+        password: hashedPassword,
+        role: role === "ADMIN" ? "ADMIN" : "TRADER",
+        virtualCash: 100000.0,
+      },
+    })
+
+    // Return user details without exposing password hash
+    const { password: _, ...userWithoutPassword } = user
+
+    return NextResponse.json({ user: userWithoutPassword }, { status: 201 })
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to process request" },
+      { error: "Failed to create user" },
       { status: 500 }
     )
   }

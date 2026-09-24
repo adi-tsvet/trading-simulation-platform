@@ -1,82 +1,156 @@
-import { prisma } from "@/lib/prisma"
-import Link from "next/link"
+"use client"
 
-export const revalidate = 0
+import { useState } from "react"
+import StockChart from "@/components/dashboard/StockChart"
+import StockStats from "@/components/dashboard/StockStats"
+import TradeInlineBar from "@/components/dashboard/TradeInlineBar"
+import StockSearchBar, { StockSearchResult } from "@/components/dashboard/StockSearchBar"
+import FavoritesWatchlist from "@/components/dashboard/FavoritesWatchlist"
 
-export default async function DashboardPage() {
-  // Sample default user lookup (or from auth session)
-  const user = await prisma.user.findFirst({
-    include: { holdings: true, transactions: { take: 5, orderBy: { createdAt: "desc" } } },
+const INITIAL_FAVORITES: StockSearchResult[] = [
+  { symbol: "AAPL", name: "Apple Inc.", type: "Stock", price: 232.50, changePercent: 1.96 },
+  { symbol: "NVDA", name: "NVIDIA Corporation", type: "Stock", price: 128.15, changePercent: 3.42 },
+  { symbol: "TSLA", name: "Tesla, Inc.", type: "Stock", price: 245.80, changePercent: -1.15 },
+]
+
+const MOCK_CHART_DATA = [
+  { time: "Mar 2026", price: 188.50 },
+  { time: "Apr 2026", price: 182.20 },
+  { time: "May 2026", price: 202.50 },
+  { time: "Jun 2026", price: 236.00 },
+  { time: "Jul 2026", price: 210.40 },
+  { time: "Aug 2026", price: 195.10 },
+  { time: "Sep 2026", price: 228.03 },
+  { time: "Today", price: 232.50 },
+]
+
+const MOCK_STATS = {
+  open: 228.03,
+  high: 234.95,
+  low: 224.02,
+  mktCap: "3.43T",
+  peRatio: 28.51,
+  fiftyTwoWkHigh: 237.23,
+  fiftyTwoWkLow: 164.27,
+  dividend: "0.44%",
+}
+
+export default function DashboardPage() {
+  const [activeAsset, setActiveAsset] = useState<StockSearchResult>({
+    symbol: "AAPL",
+    name: "Apple Inc.",
+    type: "Stock",
+    price: 232.50,
+    changePercent: 1.96,
   })
 
-  if (!user) {
-    return (
-      <div className="p-8 text-center text-slate-300">
-        No user profile found. Please run database seed or log in.
-      </div>
-    )
+  const [favorites, setFavorites] = useState<StockSearchResult[]>(INITIAL_FAVORITES)
+  const [timeframe, setTimeframe] = useState("5Y")
+
+  const isFavorite = favorites.some((f) => f.symbol === activeAsset.symbol)
+
+  const toggleFavorite = () => {
+    if (isFavorite) {
+      setFavorites(favorites.filter((f) => f.symbol !== activeAsset.symbol))
+    } else {
+      setFavorites([...favorites, activeAsset])
+    }
+  }
+
+  const handleTrade = (type: "BUY" | "SELL", qty: number) => {
+    alert(`${type} order executed for ${qty} shares of ${activeAsset.symbol}`)
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 text-white">
-      <h1 className="text-3xl font-bold mb-6">Trader Dashboard</h1>
-
-      {/* Balance Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
-          <h2 className="text-slate-400 text-sm font-medium">Virtual Cash</h2>
-          <p className="text-3xl font-bold text-emerald-400 mt-2">
-            ${user.virtualCash.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-        <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
-          <h2 className="text-slate-400 text-sm font-medium">Active Holdings</h2>
-          <p className="text-3xl font-bold text-indigo-400 mt-2">{user.holdings.length} Assets</p>
-        </div>
-        <div className="bg-slate-800 p-6 rounded-lg border border-slate-700">
-          <h2 className="text-slate-400 text-sm font-medium">Account Role</h2>
-          <p className="text-3xl font-bold text-amber-400 mt-2">{user.role}</p>
-        </div>
-      </div>
-
-      {/* Holdings Table */}
-      <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 mb-8">
-        <h2 className="text-xl font-bold mb-4">Your Portfolio Holdings</h2>
-        {user.holdings.length === 0 ? (
-          <p className="text-slate-400">No active stock or ETF positions.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-900 uppercase text-xs text-slate-400">
-                <tr>
-                  <th className="p-3">Symbol</th>
-                  <th className="p-3">Type</th>
-                  <th className="p-3">Shares</th>
-                  <th className="p-3">Avg Cost</th>
-                  <th className="p-3">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700">
-                {user.holdings.map((h) => (
-                  <tr key={h.id}>
-                    <td className="p-3 font-semibold text-white">{h.symbol}</td>
-                    <td className="p-3">{h.assetType}</td>
-                    <td className="p-3">{h.quantity}</td>
-                    <td className="p-3">${h.avgPrice.toFixed(2)}</td>
-                    <td className="p-3">
-                      <Link
-                        href={`/trade/${h.symbol}`}
-                        className="text-indigo-400 hover:underline"
-                      >
-                        Trade
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div className="min-h-screen bg-[#0B0F17] text-white p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Top Bar Navigation */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Trading Dashboard</h1>
+            <p className="text-gray-400 text-sm mt-1">Welcome back, Adnan Ali</p>
           </div>
-        )}
+
+          <StockSearchBar onSelectStock={setActiveAsset} />
+        </div>
+
+        {/* Grid Structure */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Main Content Pane */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Header info */}
+            <div className="flex justify-between items-end bg-[#131A29] p-6 rounded-2xl border border-gray-800">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-3xl font-extrabold">{activeAsset.symbol}</h2>
+                  <button
+                    onClick={toggleFavorite}
+                    className={`text-xl transition-transform hover:scale-110 ${
+                      isFavorite ? "text-yellow-400" : "text-gray-600 hover:text-yellow-400"
+                    }`}
+                  >
+                    ★
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {activeAsset.name} • Real-time Quote
+                </p>
+              </div>
+
+              <div className="text-right">
+                <p className="text-3xl font-mono font-extrabold">
+                  ${activeAsset.price.toFixed(2)}
+                </p>
+                <p
+                  className={`text-sm font-semibold mt-0.5 ${
+                    activeAsset.changePercent >= 0 ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
+                  {activeAsset.changePercent >= 0 ? "+" : ""}
+                  {(activeAsset.price * (activeAsset.changePercent / 100)).toFixed(2)} (
+                  {activeAsset.changePercent.toFixed(2)}%)
+                </p>
+              </div>
+            </div>
+
+            {/* Price Chart */}
+            <StockChart
+              symbol={activeAsset.symbol}
+              currentPrice={activeAsset.price}
+              priceChange={activeAsset.changePercent}
+              data={MOCK_CHART_DATA}
+              timeframe={timeframe}
+              onTimeframeChange={setTimeframe}
+            />
+
+            {/* Inline Trade Action Bar */}
+            <TradeInlineBar
+              symbol={activeAsset.symbol}
+              currentPrice={activeAsset.price}
+              userCash={10000}
+              onExecuteTrade={handleTrade}
+            />
+
+            {/* Key Fundamentals Stats */}
+            <StockStats stats={MOCK_STATS} />
+          </div>
+
+          {/* Side Watchlist Column */}
+          <div className="space-y-6">
+            <FavoritesWatchlist
+              favorites={favorites}
+              activeSymbol={activeAsset.symbol}
+              onSelectFavorite={setActiveAsset}
+              onRemoveFavorite={(symbol) =>
+                setFavorites(favorites.filter((f) => f.symbol !== symbol))
+              }
+            />
+          </div>
+
+        </div>
       </div>
     </div>
   )
